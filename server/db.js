@@ -1,6 +1,7 @@
 const pg = require('pg')
 const client = new pg.Client(process.env.DATABASE_URL||'postgres://localhost/the_acme_store_db')
 const uuid = require('uuid')
+const bcrypt = require('bcrypt')
 const createTables = async ()=>{
     const SQL = `
     DROP TABLE IF EXISTS users CASCADE;
@@ -9,7 +10,7 @@ const createTables = async ()=>{
     CREATE TABLE users(
         id UUID PRIMARY KEY,
         username VARCHAR (20) UNIQUE NOT NULL,
-        password VARCHAR (20) UNIQUE NOT NULL
+        password VARCHAR (255) UNIQUE NOT NULL
     );
     CREATE TABLE product(
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -19,7 +20,7 @@ const createTables = async ()=>{
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         product_id UUID REFERENCES product(id) NOT NULL,
         user_id UUID REFERENCES users(id) NOT NULL,
-        CONSTRAINT unique_users_product UNIQUE (product_id, user_id)
+        CONSTRAINT unique_user_id_product_id UNIQUE (product_id, user_id)
     );
     `
     await client.query(SQL)
@@ -31,7 +32,7 @@ const createUser = async(username, password)=>{
     VALUES($1, $2, $3)
     RETURNING *
     `
-    const response = await client.query(SQL,[uuid.v4(), username, password])
+    const response = await client.query(SQL,[uuid.v4(), username, await bcrypt.hash(password, 5)])
     console.log(response.rows[0])
 }
 
@@ -73,19 +74,20 @@ const createFavorites = async({product_id, user_id})=>{
     return response.rows[0]
 }
 
-const fetchFavorites = async()=>{
+const fetchFavorites = async(user_id)=>{
     const SQL = `
     SELECT *
-    FROM favorite
+    FROM favorite 
+    WHERE user_id = $1
     `
-    const response = await client.query(SQL)
+    const response = await client.query(SQL, [user_id])
     return response.rows
 }
 
-const destroyFavorite = async(id)=>{
+const destroyFavorite = async({user_id, id})=>{
     const SQL = `
     DELETE FROM favorite
-    WHERE id = $1
+    WHERE user_id = $1 AND id=$2
     `
     const response = await client.query(SQL, [id])
 }

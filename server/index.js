@@ -19,9 +19,7 @@ const init = async ()=>{
     console.log(await fetchUsers());
     console.log(await fetchProduct());
     await Promise.all([
-        createFavorites({product_id: Produce.id, user_id: Abby.id}),
-        createFavorites({product_id: Meat.id, user_id: Meat.id}), 
-        createFavorites({product_id: Dairy.id, user_id: Dairy.id})
+        createFavorites({ user_id: Abby.id, product_id: Produce.id }),
     ])
     const favorite = await fetchFavorites()
     await destroyFavorite(reservation[0].id)
@@ -57,7 +55,7 @@ app.get('/api/users/:id/favorites', async (req, res, next) => {
 
 app.delete('/api/users/:userId/favorites/:id', async (req, res, next) => {
     try {
-        await destroyFavorite(req.params.id)
+        await destroyFavorite({user_id: req.params.user_id, id: req.params.id})
         res,sendStatus(204)
     } catch (ex) {
         next(ex)
@@ -66,7 +64,7 @@ app.delete('/api/users/:userId/favorites/:id', async (req, res, next) => {
 
 app.post('/api/users/:id/favorites', async (req, res, next) => {
     try {
-        res.send(201).send(await createFavorites(req.body))
+        res.send(201).send(await createFavorites({user_id: req.params.user_id, product_id:req.body.product_id}))
     } catch (ex) {
         next(ex)
     }
